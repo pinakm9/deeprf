@@ -1,0 +1,3 @@
+data/*
+!data/L63-trajectories/
+**/.DS_Store
