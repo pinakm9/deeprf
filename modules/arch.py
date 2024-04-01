@@ -1,0 +1,200 @@
+# load necessary modules
+import numpy as np 
+import os, sys, time
+from pathlib import Path
+from os.path import dirname, realpath
+script_dir = Path(dirname(realpath('.')))
+module_dir = str(script_dir)
+sys.path.insert(0, module_dir + '/modules')
+import utility as ut
+import sample as sm
+# from scipy.linalg import eigh
+import pandas as pd
+import json
+import sample as sm
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter 
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, TensorDataset, RandomSampler
+import torch.nn.functional as tfn
+import torch.optim.lr_scheduler as lr_scheduler
+from collections import OrderedDict
+
+
+DTYPE = 'float64'
+torch.set_default_dtype(torch.float64)
+
+class Chain(nn.Module):
+    def __init__(self, D, D_r, B):
+        super().__init__()
+        self.D = D
+        self.D_r = D_r
+        self.B = B
+        self.inner = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
+        self.outer = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=False) for _ in range(B)])
+        
+    def forward(self, x):
+        y = x + 0.
+        for i in range(self.B):
+            y = x + self.outer[i](nn.Tanh()(self.inner[i](y)))
+        return y
+
+
+
+class DeepRF:
+    def __init__(self, D_r, B, L0, L1, Uo, beta, name='nn', save_folder='.'):
+        """
+        Args:
+            D_r: dimension of the feature 
+            B: number of RF blocks
+            name: name of the DeepRF
+            L0: left limit of tanh input for defining good rows
+            L1: right limit tanh input for defining good rows
+            Uo: training data
+            beta: regularization parameter
+        """        
+        self.device = ("cuda"
+                    if torch.cuda.is_available()
+                    else "mps"
+                    if torch.backends.mps.is_available()
+                    else "cpu")
+        self.sampler = sm.GoodRowSampler(L0, L1, Uo)
+        self.net = Chain(self.sampler.dim, D_r, B)
+        self.beta = beta
+        self.name = name
+        self.I_r = np.identity(D_r)
+        self.save_folder = save_folder + f'/{name}'
+        if not os.path.exists(self.save_folder):
+            os.makedirs(self.save_folder)
+        self.config = {'D': self.sampler.dim, 'D_r': D_r, 'B': B, 'name': name}
+        self.config |= {'L0': L0, 'L1': L1, 'beta': beta, 'training_points': Uo.shape[-1]}
+
+    
+    def forecast(self, u):
+        """
+        Description: forecasts for a single time step
+
+        Args:
+            u: state at current time step 
+
+        Returns: forecasted state
+        """
+        return self.net(torch.from_numpy(u)).detach().numpy()
+    
+    
+    def multistep_forecast(self, u, n_steps):
+        """
+        Description: forecasts for multiple time steps
+
+        Args:
+            u: state at current time step 
+            n_steps: number of steps to propagate u
+
+        Returns: forecasted state
+        """    
+        trajectory = np.zeros((self.sampler.dim, n_steps))
+        trajectory[:, 0] = u
+        for step in range(n_steps - 1):
+            u = self.forecast(u)
+            trajectory[:, step+1] = u
+        return trajectory
+    
+    def compute_W(self, W_in, b_in, X, Y):
+        """
+        Description: computes W with Ridge regression
+
+        Args:
+            W_in: internal weights
+            b_in: internal bias 
+            X: input
+            Y: output 
+        """
+        R = np.tanh(W_in @ X + b_in[:, np.newaxis])
+        return (Y@R.T) @ np.linalg.solve(R@R.T + self.beta*self.I_r, self.I_r) 
+    
+
+    def init(self):
+        X = self.sampler.Uo[:, :-1]
+        Y = self.sampler.Uo[:, 1:] - X
+        Z = np.vstack([X, np.ones(X.shape[-1])])
+        for i in range(self.net.B):
+            Wb = self.sampler.sample(self.net.D_r)
+            W_in = Wb[:, :-1]
+            b_in = Wb[:, -1]
+            W = self.compute_W(Wb[:, :-1], Wb[:, -1], X, Y)
+            self.net.inner[i].weight = nn.Parameter(torch.Tensor(W_in))
+            self.net.inner[i].bias = nn.Parameter(torch.Tensor(b_in))
+            self.net.outer[i].weight = nn.Parameter(torch.Tensor(W))
+            X = self.sampler.Uo[:, :-1] + W @ np.tanh(Wb @ Z)
+            Z = np.vstack([X, np.ones(X.shape[-1])])
+        
+    def read(self):
+        return pd.read_csv(f'{self.save_folder}/train_log.csv')
+    
+    def write_config(self):
+        with open(f'{self.save_folder}/config.json', 'w') as fp:
+            json.dump(self.config, fp)
+    
+    
+    @ut.timer
+    def compute_tau_f_(self, test, error_threshold=0.05, dt=0.02, Lyapunov_time=1/0.91):
+        """
+        Description: computes forecast time tau_f for the computed surrogate model
+
+        Args:
+            test: list of test trajectories
+        """
+        tau_f_se, tau_f_rmse = np.zeros(len(test)), np.zeros(len(test))
+        self.validation_points = test.shape[-1]
+        self.error_threshold = error_threshold
+        self.dt = dt
+        self.Lyapunov_time = Lyapunov_time
+        se, rmse = np.zeros(len(test)), np.zeros(len(test))
+        for validation_index in range(len(test)):
+            validation_ = test[validation_index]
+            prediction = self.multistep_forecast(validation_[:, 0], self.validation_points)
+            se_ = np.linalg.norm(validation_ - prediction, axis=0)**2 / np.linalg.norm(validation_, axis=0)**2
+            mse_ = np.cumsum(se_) / np.arange(1, len(se_)+1)
+    
+            
+            l = np.argmax(mse_ > self.error_threshold)
+            if l == 0:
+                tau_f_rmse[validation_index] = self.validation_points
+            else:
+                tau_f_rmse[validation_index] = l-1
+
+
+            l = np.argmax(se_ > self.error_threshold)
+            if l == 0:
+                tau_f_se[validation_index] = self.validation_points
+            else:
+                tau_f_se[validation_index] = l-1
+            
+            rmse[validation_index] = np.sqrt(mse_[-1])
+            se[validation_index] = se_.mean()
+ 
+            
+        
+        tau_f_rmse *= (self.dt / self.Lyapunov_time)
+        tau_f_se *= (self.dt / self.Lyapunov_time)
+
+        if len(test) == 1:
+            return tau_f_rmse[0], tau_f_se[0], rmse[0], se[0]
+        else:
+            return tau_f_rmse, tau_f_se, rmse, se
+    
+
+    def get_config(self):
+        self.config = json.loads(self.save_folder + '/config.json')
+    
+
+    def get_save_idx(self):
+        return sorted([int(f.split('_')[-1]) for f in os.listdir(self.save_folder) if f.startswith(self.name)])
+    
+    def save(self, idx):
+        torch.save(self.net, self.save_folder + f'/{self.name}_{idx}')
+    
+    def load(self, idx):
+        self.net = torch.load(self.save_folder + f'/{self.name}_{idx}')
+
