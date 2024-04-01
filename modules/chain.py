@@ -100,17 +100,16 @@ class DeepRF:
             trajectory[:, step+1] = u
         return trajectory
     
-    def compute_W(self, W_in, b_in, X, Y):
+    def compute_W(self, Wb_in, X, Y):
         """
         Description: computes W with Ridge regression
 
         Args:
-            W_in: internal weights
-            b_in: internal bias 
+            Wb_in: internal weights
             X: input
             Y: output 
         """
-        R = np.tanh(W_in @ X + b_in[:, np.newaxis])
+        R = np.tanh(Wb_in @ np.vstack([X, np.ones(X.shape[-1])]))
         return (Y@R.T) @ np.linalg.solve(R@R.T + self.beta*self.I_r, self.I_r) 
     
 
@@ -122,7 +121,7 @@ class DeepRF:
             Wb = self.sampler.sample(self.net.D_r)
             W_in = Wb[:, :-1]
             b_in = Wb[:, -1]
-            W = self.compute_W(Wb[:, :-1], Wb[:, -1], X, Y)
+            W = self.compute_W(Wb, X, Y)
             self.net.inner[i].weight = nn.Parameter(torch.Tensor(W_in))
             self.net.inner[i].bias = nn.Parameter(torch.Tensor(b_in))
             self.net.outer[i].weight = nn.Parameter(torch.Tensor(W))
