@@ -19,6 +19,10 @@ class GoodRowSampler:
         self.dim = self.Uo.T.shape[-1]
         self.lims = np.array([[min(self.Uo.T[:, d]), max(self.Uo.T[:, d])] for d in range(self.dim)])
 
+    
+    def update(self, Uo):
+        self.Uo = Uo
+
 
     def x_plus(self, s):
         """
