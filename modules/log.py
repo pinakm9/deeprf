@@ -12,7 +12,7 @@ class Logger:
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
         
-    def update(self, start, **kwargs):
+    def update(self, start, kwargs):
         self.config.update(kwargs)
         if start:
             with open(self.config_file, 'w') as file:
