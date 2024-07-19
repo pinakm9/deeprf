@@ -161,3 +161,15 @@ def grid_heat_plotter(x, y, data_list, xlabel, ylabel, label_list, n_rows, n_col
 		plt.close()
 
 
+
+# layer_outs = {}
+# for name, _ in self.net.named_modules():
+# 	getattr(self.net, name).register_forward_hook(self.get_layer_out(name))
+
+
+
+# def get_layer_out(self, name):
+# 	def hook(model, input, output):
+# 		self.layer_outs[name] = output.detach()
+# 	return hook
+

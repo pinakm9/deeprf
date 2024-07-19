@@ -84,7 +84,8 @@ class DeepRF(chain.DeepRF):
         Z1 = np.vstack([X1, np.ones(X1.shape[-1])])
         for i in range(self.net.B):
             Wb = self.sampler.sample(self.net.D_r)
-            Ub = self.sampler.sample(self.net.D_r) * (np.sign(Wb[:, -1])[:, np.newaxis])
+            Ub = self.sampler.sample(self.net.D_r) 
+            Ub *=  (np.sign(Wb[:, -1] * np.sign(Ub[:, -1]))[:, np.newaxis])
             W_in = Wb[:, :-1]
             bW_in = Wb[:, -1]
             U_in = Ub[:, :-1]

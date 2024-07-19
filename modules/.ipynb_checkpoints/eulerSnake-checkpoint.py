@@ -33,7 +33,7 @@ class EulerSnake(nn.Module):
         self.D_r = D_r
         self.B = B
         self.inner_W = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
-        self.inner_U = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=False) for _ in range(B)])
+        self.inner_U = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
         self.outer = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=False) for _ in range(B)])
         
     def forward(self, x):
@@ -71,9 +71,9 @@ class DeepRF(chain.DeepRF):
             X1: W input
             Y: output 
         """
-        # X_ = np.vstack([X, np.zeros(X.shape[-1])])
+        X_ = np.vstack([X, np.ones(X.shape[-1])])
         X1_ = np.vstack([X1, np.ones(X1.shape[-1])])
-        R = np.tanh(0.5 * (Wb_in @ X1_ + Ub_in @ X))
+        R = np.tanh(0.5 * (Wb_in @ X1_ + Ub_in @ X_))
         return (Y@R.T) @ np.linalg.solve(R@R.T + self.beta*self.I_r, self.I_r) 
 
     def init(self):
@@ -81,22 +81,27 @@ class DeepRF(chain.DeepRF):
         X = self.sampler.Uo[:, :-1]
         X1 = self.sampler.Uo[:, :-1]
         Y = self.sampler.Uo[:, 1:]
-        # Z = np.vstack([X, np.zeros(X.shape[-1])])
+        Z = np.vstack([X, np.ones(X.shape[-1])])
         Z1 = np.vstack([X1, np.ones(X1.shape[-1])])
         for i in range(self.net.B):
-            # Y = self.sampler.Uo[:, i+1:N-self.net.B+i+1]
+            X1 = self.sampler.Uo[:, :-1]
+            X = self.sampler.Uo[:, :-1]
+            Y = self.sampler.Uo[:, i+1:N-self.net.B+i+1]
+            Z = np.vstack([X, np.ones(X.shape[-1])])
+            Z1 = np.vstack([X1, np.ones(X1.shape[-1])])
             Wb = self.sampler.sample(self.net.D_r)
-            U = self.sampler.sample(self.net.D_r, sample_b=False) #* (np.sign(Wb[:, -1])[:, np.newaxis])
+            Ub = self.sampler.sample(self.net.D_r) * (np.sign(Wb[:, -1])[:, np.newaxis])
             W_in = Wb[:, :-1]
             bW_in = Wb[:, -1]
-
-            W = self.compute_W(Wb, U, X1, X, Y-X1)
+            U_in = Ub[:, :-1]
+            bU_in = Ub[:, -1]
+            W = self.compute_W(Wb, Ub, X1, X, Y-X1)
             self.net.inner_W[i].weight = nn.Parameter(torch.Tensor(W_in))
             self.net.inner_W[i].bias = nn.Parameter(torch.Tensor(bW_in))
-            self.net.inner_U[i].weight = nn.Parameter(torch.Tensor(U))
-
+            self.net.inner_U[i].weight = nn.Parameter(torch.Tensor(U_in))
+            self.net.inner_U[i].bias = nn.Parameter(torch.Tensor(bU_in))
             self.net.outer[i].weight = nn.Parameter(torch.Tensor(W))
-            X1 = W @ np.tanh(0.5 * (Wb @ Z1 + U @ X))
-            Z1 = np.vstack([X1, np.ones(X1.shape[-1])])
+            # X1 = W @ np.tanh(0.5 * (Wb @ Z1 + Ub @ Z))
+            # Z1 = np.vstack([X1, np.ones(X1.shape[-1])])
         
     

@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader, TensorDataset, RandomSampler
 import torch.nn.functional as tfn
 import torch.optim.lr_scheduler as lr_scheduler
 from collections import OrderedDict
-
+import log
 
 DTYPE = 'float64'
 torch.set_default_dtype(torch.float64)
@@ -67,8 +67,11 @@ class DeepRF:
         self.save_folder = save_folder + f'/{name}'
         if not os.path.exists(self.save_folder):
             os.makedirs(self.save_folder)
-        self.config = {'D': self.sampler.dim, 'D_r': D_r, 'B': B, 'name': name}
-        self.config |= {'L0': L0, 'L1': L1, 'beta': beta, 'training_points': Uo.shape[-1]}
+        config = {'D': self.sampler.dim, 'D_r': D_r, 'B': B, 'name': name}
+        config |= {'L0': L0, 'L1': L1, 'beta': beta, 'training_points': Uo.shape[-1]}
+        self.logger = log.Logger(self.save_folder)
+        self.logger.update(start=True, **config)
+
 
     
     def forecast(self, u):
@@ -131,10 +134,6 @@ class DeepRF:
     def read(self):
         return pd.read_csv(f'{self.save_folder}/train_log.csv')
     
-    def write_config(self):
-        with open(f'{self.save_folder}/config.json', 'w') as fp:
-            json.dump(self.config, fp)
-    
     
     @ut.timer
     def compute_tau_f_(self, test, error_threshold=0.05, dt=0.02, Lyapunov_time=1/0.91):
@@ -182,10 +181,6 @@ class DeepRF:
             return tau_f_rmse[0], tau_f_se[0], rmse[0], se[0]
         else:
             return tau_f_rmse, tau_f_se, rmse, se
-    
-
-    def get_config(self):
-        self.config = json.loads(self.save_folder + '/config.json')
     
 
     def get_save_idx(self):

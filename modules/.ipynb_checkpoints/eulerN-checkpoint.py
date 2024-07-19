@@ -26,23 +26,21 @@ import chain
 DTYPE = 'float64'
 torch.set_default_dtype(torch.float64)
 
-class EulerSnake(nn.Module):
+class Euler(nn.Module):
     def __init__(self, D, D_r, B):
         super().__init__()
         self.D = D
         self.D_r = D_r
         self.B = B
-        self.inner_W = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
-        self.inner_U = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=False) for _ in range(B)])
+        self.inner = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
         self.outer = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=False) for _ in range(B)])
         
     def forward(self, x):
         y = x + 0.
         for i in range(self.B):
-            y += self.outer[i](nn.Tanh()(0.5*(self.inner_W[i](y) + self.inner_U[i](x))))
+            y += self.outer[i](nn.Tanh()(self.inner[i](y)))
         return y
-
-
+    
 
 class DeepRF(chain.DeepRF):
     def __init__(self, D_r, B, L0, L1, Uo, beta, name='nn', save_folder='.'):
@@ -57,46 +55,42 @@ class DeepRF(chain.DeepRF):
             beta: regularization parameter
         """        
         super().__init__(D_r, B, L0, L1, Uo, beta, name, save_folder)
-        self.net = EulerSnake(self.sampler.dim, D_r, B)
+        self.net = Euler(self.sampler.dim, D_r, B)
     
 
-    def compute_W(self, Wb_in, Ub_in, X1, X, Y):
+    def compute_W(self, Wb_in, X, Y):
         """
         Description: computes W with Ridge regression
 
         Args:
-            Wb_in: internal W weights
-            Ub_in: internal U weights
-            X: U input
-            X1: W input
+            Wb_in: internal weights
+            X: input
             Y: output 
         """
-        # X_ = np.vstack([X, np.zeros(X.shape[-1])])
-        X1_ = np.vstack([X1, np.ones(X1.shape[-1])])
-        R = np.tanh(0.5 * (Wb_in @ X1_ + Ub_in @ X))
-        return (Y@R.T) @ np.linalg.solve(R@R.T + self.beta*self.I_r, self.I_r) 
+        R = np.tanh(Wb_in @ np.vstack([X, np.ones(X.shape[-1])]))
+        return (Y@R.T) @ np.linalg.solve(R@R.T + self.beta*self.I_r, self.I_r)  
 
     def init(self):
-        N = self.sampler.Uo.shape[-1]
-        X = self.sampler.Uo[:, :-1]
-        X1 = self.sampler.Uo[:, :-1]
-        Y = self.sampler.Uo[:, 1:]
-        # Z = np.vstack([X, np.zeros(X.shape[-1])])
-        Z1 = np.vstack([X1, np.ones(X1.shape[-1])])
+        Uo = self.sampler.Uo
+        X = Uo[:, :self.sampler.Uo.shape[-1]-self.net.B]
+        y = torch.Tensor(X.T)
         for i in range(self.net.B):
-            # Y = self.sampler.Uo[:, i+1:N-self.net.B+i+1]
+            Y = Uo[:, i+1:Uo.shape[-1]-(self.net.B-i-1)]
+            self.sampler.update(X)
             Wb = self.sampler.sample(self.net.D_r)
-            U = self.sampler.sample(self.net.D_r, sample_b=False) #* (np.sign(Wb[:, -1])[:, np.newaxis])
+            W = self.compute_W(Wb, X, Y-X)
             W_in = Wb[:, :-1]
             bW_in = Wb[:, -1]
-
-            W = self.compute_W(Wb, U, X1, X, Y-X1)
-            self.net.inner_W[i].weight = nn.Parameter(torch.Tensor(W_in))
-            self.net.inner_W[i].bias = nn.Parameter(torch.Tensor(bW_in))
-            self.net.inner_U[i].weight = nn.Parameter(torch.Tensor(U))
-
+            self.net.inner[i].weight = nn.Parameter(torch.Tensor(W_in))
+            self.net.inner[i].bias = nn.Parameter(torch.Tensor(bW_in))
             self.net.outer[i].weight = nn.Parameter(torch.Tensor(W))
-            X1 = W @ np.tanh(0.5 * (Wb @ Z1 + U @ X))
-            Z1 = np.vstack([X1, np.ones(X1.shape[-1])])
+            y +=  self.net.outer[i](nn.Tanh()(self.net.inner[i](torch.from_numpy(X).T)))
+            X = y.detach().numpy().T
+
+ 
+            
+            
+           
         
-    
+     
+
