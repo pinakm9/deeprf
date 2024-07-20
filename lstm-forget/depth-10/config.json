@@ -1,0 +1,18 @@
+{
+  "D": 3,
+  "D_r": 256,
+  "B": 10,
+  "name": "nn",
+  "L0": 0.4,
+  "L1": 3.5,
+  "beta": 0.0,
+  "training_points": 20000,
+  "parameters": 17920
+}{
+  "epochs": 1000,
+  "learning_rate": 0.0001,
+  "batch_size": 200
+}{
+  "update_fraction": 0.1,
+  "update_threshold": -0.0001
+}

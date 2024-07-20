@@ -84,7 +84,7 @@ class DeepRF(chain.DeepRF):
         """        
         super().__init__(D_r, B, L0, L1, Uo, 0., name, save_folder)
         self.net = LSTM(self.sampler.dim, D_r, B)
-        
+        self.logger.update(start=False, kwargs={'parameters': self.count_params()})
 
 
     def forecast(self, u):

@@ -69,7 +69,7 @@ class DeepRF:
         if not os.path.exists(self.save_folder):
             os.makedirs(self.save_folder)
         config = {'D': self.sampler.dim, 'D_r': D_r, 'B': B, 'name': name}
-        config |= {'L0': L0, 'L1': L1, 'beta': beta, 'training_points': Uo.shape[-1], 'parameters': self.count_params()}
+        config |= {'L0': L0, 'L1': L1, 'beta': beta, 'training_points': Uo.shape[-1]}
         self.logger = log.Logger(self.save_folder)
         self.logger.update(start=True, kwargs=config)
         
@@ -79,6 +79,7 @@ class DeepRF:
 
         self.X = torch.from_numpy((Uo[:, :-1].T -0.) / 1.)
         self.Y = torch.from_numpy((Uo[:, 1:].T -0.) /1.)
+        self.logger.update(start=False, kwargs={'parameters': self.count_params()})
 
 
     def count_params(self):

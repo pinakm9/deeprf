@@ -33,7 +33,7 @@ class EulerSnake(nn.Module):
         self.D_r = D_r
         self.B = B
         self.inner_W = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
-        self.inner_U = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=False) for _ in range(B)])
+        self.inner_U = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
         self.outer = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=False) for _ in range(B)])
         
     def forward(self, x):
@@ -58,7 +58,7 @@ class DeepRF(chain.DeepRF):
         """        
         super().__init__(D_r, B, L0, L1, Uo, beta, name, save_folder)
         self.net = EulerSnake(self.sampler.dim, D_r, B)
-    
+        self.logger.update(start=False, kwargs={'parameters': self.count_params()})
 
     def compute_W(self, Wb_in, Ub_in, X1, X, Y):
         """

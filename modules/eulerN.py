@@ -56,7 +56,7 @@ class DeepRF(chain.DeepRF):
         """        
         super().__init__(D_r, B, L0, L1, Uo, beta, name, save_folder)
         self.net = Euler(self.sampler.dim, D_r, B)
-    
+        self.logger.update(start=False, kwargs={'parameters': self.count_params()})
 
     def compute_W(self, Wb_in, X, Y):
         """
@@ -71,21 +71,22 @@ class DeepRF(chain.DeepRF):
         return (Y@R.T) @ np.linalg.solve(R@R.T + self.beta*self.I_r, self.I_r)  
 
     def init(self):
-        Uo = self.sampler.Uo
-        X = Uo[:, :self.sampler.Uo.shape[-1]-self.net.B]
-        y = torch.Tensor(X.T)
+        # Uo = self.sampler.Uo
+        # X = Uo[:, :self.sampler.Uo.shape[-1]-self.net.B]
+        # y = torch.Tensor(X.T)
+        Y = self.Y.T-self.X.T
         for i in range(self.net.B):
-            Y = Uo[:, i+1:Uo.shape[-1]-(self.net.B-i-1)]
-            self.sampler.update(X)
+            # Y = Uo[:, i+1:Uo.shape[-1]-(self.net.B-i-1)]
+            # self.sampler.update(X)
             Wb = self.sampler.sample(self.net.D_r)
-            W = self.compute_W(Wb, X, Y-X)
+            W = self.compute_W(Wb, self.X.T, Y)
             W_in = Wb[:, :-1]
             bW_in = Wb[:, -1]
             self.net.inner[i].weight = nn.Parameter(torch.Tensor(W_in))
             self.net.inner[i].bias = nn.Parameter(torch.Tensor(bW_in))
             self.net.outer[i].weight = nn.Parameter(torch.Tensor(W))
-            y +=  self.net.outer[i](nn.Tanh()(self.net.inner[i](torch.from_numpy(X).T)))
-            X = y.detach().numpy().T
+            # y +=  self.net.outer[i](nn.Tanh()(self.net.inner[i](torch.from_numpy(X).T)))
+            # X = y.detach().numpy().T
 
  
             
