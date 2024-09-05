@@ -1,0 +1,14 @@
+{
+  "D": 1,
+  "D_r": 1500,
+  "B": 2,
+  "name": "EulerSnake of depth 2",
+  "L0": 0.25,
+  "L1": 5.0,
+  "beta": 5e-10,
+  "training_points": 50000
+}{
+  "parameters": 9000
+}{
+  "parameters": 15000
+}
