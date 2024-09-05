@@ -377,7 +377,7 @@ class BatchDeepRF:
     def run_single(self, exp_idx:int, model_seed: int, train_idx: int, test_idx: int, **tau_f_kwargs):
         deep_rf = self.drf_type(*self.drf_args)
         deep_rf.learn(self.train[:, train_idx:train_idx+self.training_points], model_seed)
-        return [exp_idx, model_seed, train_idx, test_idx] + list(self.compute_tau_f(deep_rf, self.test[test_idx:test_idx+1], **tau_f_kwargs))
+        return [exp_idx, model_seed, train_idx, test_idx] + list(self.get_tau_f(deep_rf, self.test[test_idx], **tau_f_kwargs))
     
 
     @ut.timer
@@ -430,13 +430,11 @@ class BatchDeepRF:
     def get_beta_data(self):
         return pd.read_csv(f'{self.drf.save_folder}/beta_test_D_r-{self.drf.net.D_r}_depth-{self.drf.net.B}.csv')
 
-    def try_beta(self, results, beta, model_seeds, train_seeds, test_seeds, **tau_f_kwargs):
+    def try_beta(self, beta, model_seed, train_idx, test_idx, **tau_f_kwargs):
         self.drf_args[5] = beta
-        for i, seed in enumerate(model_seeds):
-            drf = self.drf_type(*self.drf_args)
-            drf.learn(self.train[:, train_seeds[i]:train_seeds[i]+self.training_points], seed)
-            results[i, :] = [i, beta, seed, train_seeds[i], test_seeds[i]] +\
-                       list(self.get_tau_f(drf, self.test[test_seeds[i]], **tau_f_kwargs))
+        drf = self.drf_type(*self.drf_args)
+        drf.learn(self.train[:, train_idx:train_idx+self.training_points], model_seed)
+        return [beta, model_seed, train_idx, test_idx] + list(self.get_tau_f(drf, self.test[test_idx], **tau_f_kwargs))
        
     
     @ut.timer
@@ -448,7 +446,7 @@ class BatchDeepRF:
             os.remove(file_path)
         if os.path.exists(file_path_agg):
             os.remove(file_path_agg)
-        columns = ['l', 'beta', 'seed', 'train_index',\
+        columns = ['beta', 'seed', 'train_index',\
                     'test_index', 'tau_f_nmse', 'tau_f_se', 'nmse', 'se']
         columns_agg = ['beta', 'tau_f_nmse_mean', 'tau_f_se_mean', 'nmse_mean', 'se_mean',\
                        'tau_f_nmse_std', 'tau_f_se_std', 'nmse_std', 'se_std']
@@ -466,21 +464,18 @@ class BatchDeepRF:
 
   
         k = 0 
-        results = np.zeros((n_repeats, 9))
-        results_agg = np.zeros((1, 9))
         for beta in betas:
             print(f'Running experiments for (D_r, B, beta) = ({self.drf_args[0]}, {self.drf_args[1]}, {beta:.2E})...')
             start = time.time()
-            self.try_beta(results, beta, model_seeds[k:k+n_repeats], train_indices[k:k+n_repeats],\
-                                     test_indices[k:k+n_repeats], **tau_f_kwargs)
-            results_agg[:, 0] = beta
-            results_agg[:, [1, 2, 3, 4]] = np.mean(results[:, [5, 6, 7, 8]], axis=0) 
-            results_agg[:, [5, 6, 7, 8]] = np.std(results[:, [5, 6, 7, 8]], axis=0)
+            results = [self.try_beta(beta, model_seeds[j], train_indices[j], test_indices[j], **tau_f_kwargs) for j in range(k, k+n_repeats)]
+            # results_agg = beta
+            # results_agg[:, [1, 2, 3, 4]] = np.mean(results[:, [5, 6, 7, 8]], axis=0) 
+            # results_agg[:, [5, 6, 7, 8]] = np.std(results[:, [5, 6, 7, 8]], axis=0)
             # print(results)
             pd.DataFrame(results, columns=columns, dtype=float)\
                         .to_csv(file_path, mode='a', index=False, header=not os.path.exists(file_path))
-            pd.DataFrame(results_agg, columns=columns_agg, dtype=float)\
-                        .to_csv(file_path_agg, mode='a', index=False, header=not os.path.exists(file_path_agg))
+            # pd.DataFrame(results_agg, columns=columns_agg, dtype=float)\
+            #             .to_csv(file_path_agg, mode='a', index=False, header=not os.path.exists(file_path_agg))
             end = time.time()
             print(f'Time taken = {end-start:.2E}s')
             k += n_repeats
