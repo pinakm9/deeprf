@@ -97,7 +97,6 @@ class GoodRowSampler:
         idx = torch.logical_and(dpl, dmg)
         a1[idx] = 1e6*torch.ones(idx.sum(), device=self.device)            
 
-        # # pick a point on the line 
         a = a1 * torch.rand(a1.shape, device=self.device)
         subset_flag = torch.randint(2, size=a.shape, device=self.device).to(torch.double) 
         subset_flag[subset_flag==0] = -1.  

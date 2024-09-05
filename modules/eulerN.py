@@ -92,7 +92,7 @@ class DeepRF(chain.DeepRF):
                 self.net.outer[i].weight = nn.Parameter(self.compute_W(Wb, X, Y))
                 print(f"Third assignment took = {time.time()-third}s")
     
-    @ut.timer
+    # @ut.timer
     def learn(self, train, seed):
         self.set_stats(train)
         with torch.no_grad():
@@ -104,7 +104,7 @@ class DeepRF(chain.DeepRF):
    
 
 
-    @ut.timer
+    # @ut.timer
     def learn_same(self, train, seed):
         self.set_stats(train)
         X, Y = train[:, :-1], train[:, 1:]

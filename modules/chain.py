@@ -212,7 +212,6 @@ class DeepRF:
         Args:
             test: list of test trajectories
         """
-        test.to(self.device)
         self.validation_points = test.shape[-1]
         self.error_threshold = error_threshold
         self.dt = dt
@@ -371,15 +370,14 @@ class BatchDeepRF:
 
     def compute_tau_f(self, drf, test, **tau_f_kwargs):
         tau_f_nmse, tau_f_se, nmse, se = drf.compute_tau_f(test, **tau_f_kwargs)
-        return float(tau_f_nmse.mean()), float(tau_f_se.mean()), float(nmse.mean()), float(se.mean()),\
-               float(tau_f_nmse.std()), float(tau_f_se.std()), float(nmse.std()), float(se.std())
+        return float(tau_f_nmse[0]), float(tau_f_se[0]), float(nmse[0]), float(se[0])
     
 
 
     def run_single(self, exp_idx:int, model_seed: int, train_idx: int, test_idx: int, **tau_f_kwargs):
         deep_rf = self.drf_type(*self.drf_args)
         deep_rf.learn(self.train[:, train_idx:train_idx+self.training_points], model_seed)
-        return [exp_idx, model_seed, train_idx, test_idx] + list(self.get_tau_f(deep_rf, self.test[test_idx], **tau_f_kwargs))
+        return [exp_idx, model_seed, train_idx, test_idx] + list(self.compute_tau_f(deep_rf, self.test[test_idx:test_idx+1], **tau_f_kwargs))
     
 
     @ut.timer
