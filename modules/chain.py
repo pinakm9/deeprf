@@ -11,7 +11,6 @@ from joblib import Parallel, delayed, parallel_config
 
 # from scipy.linalg import eigh
 import pandas as pd
-import json
 import oneshot as sm
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter 
@@ -20,8 +19,8 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset, RandomSampler
 import torch.nn.functional as tfn
 import torch.optim.lr_scheduler as lr_scheduler
-from collections import OrderedDict
 import log
+import glob
 import learning_rate as rate
 from joblib import Parallel, delayed
 
@@ -541,6 +540,18 @@ class BetaTester:
 
     
         
+def agg_beta(folder):
+    files = glob.glob(folder + '/*.csv')
+    agg = []
+    for file in files:
+        filename = os.path.basename(file)
+        if filename != 'beta.csv':
+            D_r = int(filename[9:].split('_')[0])
+            data = pd.read_csv(file)
+            idx = np.argmax(data['tau_f_nmse_mean'])
+            agg.append([D_r] + data.iloc[idx].to_list())
+    pd.DataFrame(sorted(agg, key=lambda x:x[0]), columns=['D_r'] + list(data.columns))\
+                .to_csv(folder + '/beta.csv', index=False, mode='w')
 
 
 
