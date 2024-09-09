@@ -23,6 +23,7 @@ import log
 import glob
 import learning_rate as rate
 from joblib import Parallel, delayed
+import itertools
 
 DTYPE = 'float64'
 torch.set_default_dtype(torch.float64)
@@ -535,7 +536,12 @@ class BetaTester:
         
 
 
-
+    def search_beta_(self, negative_log10_range:list, resolution:int, n_repeats: int,\
+                    training_points: int, **tau_f_kwargs):
+        for i, config in enumerate(itertools.product(self.D_r_list, self.B_list)):
+            drf_args = self.get_drf_args(*config)
+            batch = BatchDeepRF(self.drf_type, drf_args[4], self.test, *drf_args)
+            batch.search_beta(negative_log10_range[i], resolution, n_repeats, training_points, **tau_f_kwargs)
     
 
     
