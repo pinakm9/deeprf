@@ -90,8 +90,8 @@ class DeepRF(chain.DeepRF):
         indices = torch.randperm(X.shape[1])
         X = X[:, indices[:100000]]
         Y = Y[:, indices[:100000]]
-        print(X.shape, Y.shape)
-        self.set_stats(X)
+        # print(X.shape, Y.shape)
+        # self.set_stats(X)
         with torch.no_grad():
             Wb = self.sampler.sample_vec(self.net.D_r, seed=seed)
             self.net.inner[0].weight = nn.Parameter(Wb[:, :-1])
