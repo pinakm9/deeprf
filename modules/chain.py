@@ -434,7 +434,6 @@ class BatchDeepRF:
         self.drf_args[5] = beta
         drf = self.drf_type(*self.drf_args)
         drf.learn(self.train[:, train_idx:train_idx+self.training_points], model_seed)
-        del drf
         return self.get_tau_f(drf, self.test[test_idx], **tau_f_kwargs) #[beta, model_seed, train_idx, test_idx] +
        
     
