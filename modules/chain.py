@@ -469,9 +469,9 @@ class BatchDeepRF:
             print(f'Running experiments for (D_r, B, beta) = ({self.drf_args[0]}, {self.drf_args[1]}, {beta:.2E})...')
             start = time.time()
             for j in range(k, k+n_repeats):
-                r[:, j] = self.try_beta(beta, model_seeds[j], train_indices[j], test_indices[j], **tau_f_kwargs)
-            results = [[beta, float(r[0].mean()), float(r[1].mean()), float(r[2].mean()), float(r[3].mean()),\
-                        float(r[0].std()), float(r[1].std()), float(r[2].std()), float(r[3].std())]]
+                r[:, j-k] = self.try_beta(beta, model_seeds[j], train_indices[j], test_indices[j], **tau_f_kwargs)
+                results = [[beta, float(r[0].mean()), float(r[1].mean()), float(r[2].mean()), float(r[3].mean()),\
+                            float(r[0].std()), float(r[1].std()), float(r[2].std()), float(r[3].std())]]
             # results_agg = beta
             # results_agg[:, [1, 2, 3, 4]] = np.mean(results[:, [5, 6, 7, 8]], axis=0) 
             # results_agg[:, [5, 6, 7, 8]] = np.std(results[:, [5, 6, 7, 8]], axis=0)
