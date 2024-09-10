@@ -364,7 +364,7 @@ class BatchDeepRF:
 
             tau_f_nmse *= (dt / Lyapunov_time)
             tau_f_se *= (dt / Lyapunov_time)
-            return tau_f_nmse, tau_f_se, nmse, se
+            return torch.tensor([tau_f_nmse, tau_f_se, nmse, se], device=drf.device)
         
 
 
