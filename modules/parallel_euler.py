@@ -27,7 +27,7 @@ DTYPE = 'float64'
 torch.set_default_dtype(torch.float64)
 
 class ParallelEuler(nn.Module):
-    def __init__(self, D, D_r, B, G, I):
+    def __init__(self, D, D_r, B, G=2, I=2):
         super().__init__()
         self.D = D
         self.D_r = D_r
@@ -49,7 +49,7 @@ class ParallelEuler(nn.Module):
 
     
 class DeepRF(chain.DeepRF):
-    def __init__(self, D_r, B, G, I, L0, L1, Uo, beta, name='nn', save_folder='.', normalize=False):
+    def __init__(self, D_r, B, L0, L1, Uo, beta, name='nn', save_folder='.', normalize=False):
         """
         Args:
             D_r: dimension of the feature 
@@ -61,7 +61,7 @@ class DeepRF(chain.DeepRF):
             beta: regularization parameter
         """        
         super().__init__(D_r, B, L0, L1, Uo, beta, name, save_folder, normalize)
-        self.net = ParallelEuler(self.sampler.dim, D_r, B, G, I)
+        self.net = ParallelEuler(self.sampler.dim, D_r, B)
         self.net.to(self.device)
         self.sampler.update((Uo.T[:-1][..., self.net.idx]).flatten(0, 1).T)
         self.logger.update(start=False, kwargs={'parameters': self.count_params()})
