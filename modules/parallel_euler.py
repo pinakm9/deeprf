@@ -93,3 +93,12 @@ class DeepRF(chain.DeepRF):
             self.net.inner[0].weight = nn.Parameter(Wb[:, :-1])
             self.net.inner[0].bias = nn.Parameter(Wb[:, -1])
             self.net.outer[0].weight = nn.Parameter(self.compute_W(Wb, X, Y))
+
+
+class BatchDeepRF(chain.BatchDeepRF):
+    def __init__(self, train: np.array, test: np.array, *drf_args):
+        super().__init__(DeepRF, train, test, *drf_args) 
+
+class BetaTester(chain.BetaTester):
+    def __init__(self, D_r_list: list, B_list: list, train_list: list, test: np.array, *drf_args):
+        super().__init__(DeepRF, D_r_list, B_list, train_list, test, *drf_args) 
