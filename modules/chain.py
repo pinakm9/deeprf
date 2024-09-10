@@ -434,6 +434,7 @@ class BatchDeepRF:
         self.drf_args[5] = beta
         drf = self.drf_type(*self.drf_args)
         drf.learn(self.train[:, train_idx:train_idx+self.training_points], model_seed)
+        del drf
         return self.get_tau_f(drf, self.test[test_idx], **tau_f_kwargs) #[beta, model_seed, train_idx, test_idx] +
        
     
@@ -463,12 +464,13 @@ class BatchDeepRF:
         test_indices = np.random.randint(len(self.test), size=self.n_exps)
 
   
-        k = 0 
+        k = 0
+        r = torch.zeros(size=(4, n_repeats), device=self.drf.device)
         for beta in betas:
             print(f'Running experiments for (D_r, B, beta) = ({self.drf_args[0]}, {self.drf_args[1]}, {beta:.2E})...')
             start = time.time()
-            r = torch.tensor([self.try_beta(beta, model_seeds[j], train_indices[j], test_indices[j], **tau_f_kwargs)\
-                                         for j in range(k, k+n_repeats)], device=self.drf.device).T
+            for j in range(k, k+n_repeats):
+                r[:, j] = self.try_beta(beta, model_seeds[j], train_indices[j], test_indices[j], **tau_f_kwargs)
             results = [[beta, float(r[0].mean()), float(r[1].mean()), float(r[2].mean()), float(r[3].mean()),\
                         float(r[0].std()), float(r[1].std()), float(r[2].std()), float(r[3].std())]]
             # results_agg = beta
