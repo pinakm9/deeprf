@@ -34,7 +34,8 @@ class Euler(nn.Module):
         self.B = B
         self.inner = nn.ModuleList([nn.Linear(self.D, self.D_r, bias=True) for _ in range(B)])
         self.outer = nn.ModuleList([nn.Linear(self.D_r, self.D, bias=False) for _ in range(B)])
-        
+
+    # @ut.timer  
     def forward(self, x):
         y = x + 0.
         for i in range(self.B):

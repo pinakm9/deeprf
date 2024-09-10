@@ -26,6 +26,8 @@ class GoodRowSampler:
     
     def update(self, Uo):
         self.Uo = Uo
+        self.dim = Uo.T.shape[-1]
+        self.lims = torch.stack((torch.min(Uo, dim=1)[0], torch.max(Uo, dim=1)[0]), dim=1)
 
 
     def x_plus(self, s):
@@ -207,172 +209,172 @@ class GoodRowSampler:
 
 
 
-class LinearRowSampler(GoodRowSampler):
-    """
-    One shot hit and run sampler for linear rows
-    """
-    def __init__(self, L0, Uo):
-        """
-        Args:
-            L0: left limit of tanh input for defining good rows
-            Uo: training data
-        """
-        super().__init__(-L0, L0, Uo)
+# class LinearRowSampler(GoodRowSampler):
+#     """
+#     One shot hit and run sampler for linear rows
+#     """
+#     def __init__(self, L0, Uo):
+#         """
+#         Args:
+#             L0: left limit of tanh input for defining good rows
+#             Uo: training data
+#         """
+#         super().__init__(-L0, L0, Uo)
 
 
-    def sample_(self, sample_b=True):
+#     def sample_(self, sample_b=True):
      
-        # choose bias
-        b = np.random.uniform(self.L0, self.L1)
+#         # choose bias
+#         b = np.random.uniform(self.L0, self.L1)
         
-        # choose an orthant
-        s = np.random.randint(2, size=self.dim)
-        # choose a direction in the orthant
-        d = np.abs(np.random.normal(size=self.dim)) * np.array([1 if e else -1 for e in s])
-        d /= np.linalg.norm(d)
+#         # choose an orthant
+#         s = np.random.randint(2, size=self.dim)
+#         # choose a direction in the orthant
+#         d = np.abs(np.random.normal(size=self.dim)) * np.array([1 if e else -1 for e in s])
+#         d /= np.linalg.norm(d)
         
-        # determine line segment
-        d_plus = d @ self.x_plus(s)
-        d_minus = d @ self.x_minus(s)
-        q = (self.L0 - b) / d_minus
-        p = (self.L1 - b) / d_plus
+#         # determine line segment
+#         d_plus = d @ self.x_plus(s)
+#         d_minus = d @ self.x_minus(s)
+#         q = (self.L0 - b) / d_minus
+#         p = (self.L1 - b) / d_plus
 
 
-        if d_plus > 0:
-            if d_minus < 0:
-                a1 = np.min([p, q]) 
-            else:
-                a1 = p 
-        else:
-            if d_minus < 0:
-                a1 = q
-            else:
-                a1 = 1e6             
+#         if d_plus > 0:
+#             if d_minus < 0:
+#                 a1 = np.min([p, q]) 
+#             else:
+#                 a1 = p 
+#         else:
+#             if d_minus < 0:
+#                 a1 = q
+#             else:
+#                 a1 = 1e6             
 
-        # pick a point on the line 
-        a = np.random.uniform(0, a1)
-        if sample_b:
-            return np.hstack([a*d, b])
-        else:
-            return a*d
+#         # pick a point on the line 
+#         a = np.random.uniform(0, a1)
+#         if sample_b:
+#             return np.hstack([a*d, b])
+#         else:
+#             return a*d
         
 
-class SaturatedRowSampler(GoodRowSampler):
-    """
-    One shot hit and run sampler for saturated rows
-    """
-    def __init__(self, L1, Uo):
-        """
-        Args:
-            L1: right limit tanh input for defining good rows
-            Uo: training data
-        """
-        super().__init__(L1, 10., Uo)
+# class SaturatedRowSampler(GoodRowSampler):
+#     """
+#     One shot hit and run sampler for saturated rows
+#     """
+#     def __init__(self, L1, Uo):
+#         """
+#         Args:
+#             L1: right limit tanh input for defining good rows
+#             Uo: training data
+#         """
+#         super().__init__(L1, 10., Uo)
     
 
-    def sample_(self, sample_b=True):
+#     def sample_(self, sample_b=True):
      
-        # choose bias
-        b = np.random.uniform(self.L0, self.L1)
+#         # choose bias
+#         b = np.random.uniform(self.L0, self.L1)
         
-        # choose an orthant
-        s = np.random.randint(2, size=self.dim)
-        # choose a direction in the orthant
-        d = np.abs(np.random.normal(size=self.dim)) * np.array([1 if e else -1 for e in s])
-        d /= np.linalg.norm(d)
+#         # choose an orthant
+#         s = np.random.randint(2, size=self.dim)
+#         # choose a direction in the orthant
+#         d = np.abs(np.random.normal(size=self.dim)) * np.array([1 if e else -1 for e in s])
+#         d /= np.linalg.norm(d)
         
-        # determine line segment
-        d_plus = d @ self.x_plus(s)
-        d_minus = d @ self.x_minus(s)
-        q = (self.L0 - b) / d_minus
-        p = (self.L1 - b) / d_plus
+#         # determine line segment
+#         d_plus = d @ self.x_plus(s)
+#         d_minus = d @ self.x_minus(s)
+#         q = (self.L0 - b) / d_minus
+#         p = (self.L1 - b) / d_plus
 
 
-        if d_plus > 0:
-            if d_minus < 0:
-                a1 = np.min([p, q]) 
-            else:
-                a1 = p 
-        else:
-            if d_minus < 0:
-                a1 = q
-            else:
-                a1 = 1e6             
+#         if d_plus > 0:
+#             if d_minus < 0:
+#                 a1 = np.min([p, q]) 
+#             else:
+#                 a1 = p 
+#         else:
+#             if d_minus < 0:
+#                 a1 = q
+#             else:
+#                 a1 = 1e6             
 
-        # pick a point on the line 
-        a = np.random.uniform(0, a1)
-        if sample_b:
-            wb = np.hstack([a*d, b])
-            # decide which subset of the solution set we want to sample
-            if np.random.randint(2) == 1:
-                return wb
-            else:
-                return -wb
-        else:
-            if np.random.randint(2) == 1:
-                return a*d
-            else:
-                return -a*d
+#         # pick a point on the line 
+#         a = np.random.uniform(0, a1)
+#         if sample_b:
+#             wb = np.hstack([a*d, b])
+#             # decide which subset of the solution set we want to sample
+#             if np.random.randint(2) == 1:
+#                 return wb
+#             else:
+#                 return -wb
+#         else:
+#             if np.random.randint(2) == 1:
+#                 return a*d
+#             else:
+#                 return -a*d
     
 
-class MatrixSampler:
-    """
-    One shot hit and run sampler for augmented matrices
-    """
-    def __init__(self, L0, L1, Uo):
-        """
-        Args:
-            L0: left limit of tanh input for defining good rows
-            L1: right limit tanh input for defining good rows
-            Uo: training data
-        """
-        self.L0 = L0
-        self.L1 = L1 
-        self.Uo = Uo
-        self.goodRowSampler = GoodRowSampler(L0, L1, Uo)
-        self.linearRowSampler = LinearRowSampler(L0, Uo)
-        self.saturatedRowSampler = SaturatedRowSampler(L1, Uo)
-        self.name = "One-shot Matrix Sampler"
+# class MatrixSampler:
+#     """
+#     One shot hit and run sampler for augmented matrices
+#     """
+#     def __init__(self, L0, L1, Uo):
+#         """
+#         Args:
+#             L0: left limit of tanh input for defining good rows
+#             L1: right limit tanh input for defining good rows
+#             Uo: training data
+#         """
+#         self.L0 = L0
+#         self.L1 = L1 
+#         self.Uo = Uo
+#         self.goodRowSampler = GoodRowSampler(L0, L1, Uo)
+#         self.linearRowSampler = LinearRowSampler(L0, Uo)
+#         self.saturatedRowSampler = SaturatedRowSampler(L1, Uo)
+#         self.name = "One-shot Matrix Sampler"
     
-    def sample_(self, partition):
-        self.partition = partition
-        rows = []
-        if partition[0] > 0:
-            rows.append(self.goodRowSampler.sample(partition[0]))
-        if partition[1] > 0:
-            rows.append(self.linearRowSampler.sample(partition[1]))
-        if partition[2] > 0:
-            rows.append(self.saturatedRowSampler.sample(partition[2]))
-        return np.vstack(rows) 
+#     def sample_(self, partition):
+#         self.partition = partition
+#         rows = []
+#         if partition[0] > 0:
+#             rows.append(self.goodRowSampler.sample(partition[0]))
+#         if partition[1] > 0:
+#             rows.append(self.linearRowSampler.sample(partition[1]))
+#         if partition[2] > 0:
+#             rows.append(self.saturatedRowSampler.sample(partition[2]))
+#         return np.vstack(rows) 
     
-    @ut.timer
-    def sample(self, partition, numMatrices=1):
-        """
-        Args:
-            numMatrices: number of augmented matrices to sample
-        """
-        self.partition = partition
-        return np.array([self.sample_(partition) for _ in range(numMatrices)])
+#     @ut.timer
+#     def sample(self, partition, numMatrices=1):
+#         """
+#         Args:
+#             numMatrices: number of augmented matrices to sample
+#         """
+#         self.partition = partition
+#         return np.array([self.sample_(partition) for _ in range(numMatrices)])
     
-    @ut.timer
-    def sample_parallel(self, partition, numMatrices):
-        """
-        Args:
-            numMatrices: number of rows to sample
-        """
-        self.partition = partition
-        return np.array(Parallel(n_jobs=-1)(delayed(self.sample_)(partition) for _ in range(numMatrices)))
+#     @ut.timer
+#     def sample_parallel(self, partition, numMatrices):
+#         """
+#         Args:
+#             numMatrices: number of rows to sample
+#         """
+#         self.partition = partition
+#         return np.array(Parallel(n_jobs=-1)(delayed(self.sample_)(partition) for _ in range(numMatrices)))
     
 
 
 
 
 
-# lambda0 = self.L0 - b
-    # lambda1 = self.L1 - b
-    # lam1_min = lambda1/self.x_minus([1])[0]
-    # lam0_max = lambda0/self.x_plus([1])[0]
-    # lam1_max = lambda1/self.x_plus([1])[0]
-    # lam0_min = lambda0/self.x_minus([1])[0]
-    # print(f"x_max: {self.Uo.flatten().max()}, {self.x_plus([1])[0]}, x_min: {self.Uo.flatten().min()}, {self.x_minus([1])[0]}")
-    # print(f"The range is 0 to {a1}, w_left = {max(lam1_min, lam0_max)}, w_right = {min(lam1_max, lam0_min)}")
+# # lambda0 = self.L0 - b
+#     # lambda1 = self.L1 - b
+#     # lam1_min = lambda1/self.x_minus([1])[0]
+#     # lam0_max = lambda0/self.x_plus([1])[0]
+#     # lam1_max = lambda1/self.x_plus([1])[0]
+#     # lam0_min = lambda0/self.x_minus([1])[0]
+#     # print(f"x_max: {self.Uo.flatten().max()}, {self.x_plus([1])[0]}, x_min: {self.Uo.flatten().min()}, {self.x_minus([1])[0]}")
+#     # print(f"The range is 0 to {a1}, w_left = {max(lam1_min, lam0_max)}, w_right = {min(lam1_max, lam0_min)}")
