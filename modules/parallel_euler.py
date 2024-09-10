@@ -87,6 +87,9 @@ class DeepRF(chain.DeepRF):
     def learn(self, train, seed):
         X = (train.T[:-1][..., self.net.idx]).flatten(0, 1).T
         Y = (train.T[1:][..., self.net.idx0] - train.T[:-1][..., self.net.idx0]).flatten(0, 1).T
+        indices = torch.randperm(X.shape[1])
+        X = X[:, indices[:100000]]
+        Y = Y[:, indices[:100000]]
         self.set_stats(X)
         with torch.no_grad():
             Wb = self.sampler.sample_vec(self.net.D_r, seed=seed)
