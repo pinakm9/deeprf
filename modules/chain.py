@@ -543,6 +543,7 @@ class BetaTester:
             drf_args = self.get_drf_args(*config)
             batch = BatchDeepRF(self.drf_type, drf_args[4], self.test, *drf_args)
             batch.search_beta(negative_log10_range[i], resolution, n_repeats, training_points, **tau_f_kwargs)
+            
     
 
     

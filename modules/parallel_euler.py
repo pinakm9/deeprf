@@ -63,8 +63,8 @@ class DeepRF(chain.DeepRF):
         super().__init__(D_r, B, L0, L1, Uo, beta, name, save_folder, normalize)
         self.net = ParallelEuler(self.sampler.dim, D_r, B)
         self.net.to(self.device)
-        self.sampler.update((Uo.T[:-1][..., self.net.idx]).flatten(0, 1).T)
         self.logger.update(start=False, kwargs={'parameters': self.count_params()})
+        self.sampler.update((Uo.T[:-1][..., self.net.idx]).flatten(0, 1).T)
         self.arch = self.net.__class__
         
     
